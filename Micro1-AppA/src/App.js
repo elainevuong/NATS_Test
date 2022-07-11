@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { connect, StringCodec } from "nats.ws" 
+// import { connect, StringCodec } from 'nats'
 import Messages from './components/Messages';
 
 const stringCoder = StringCodec(); 
@@ -31,7 +32,8 @@ function App() {
     const establishConnection = () => {
       if (natsConnection === undefined) {
         connect({
-          servers: ["ws://127.0.0.1:9090"]
+          servers: ["ws://127.0.0.1:9090"],
+          token: "s3cr3t",
         })
           .then(connection => {
             console.log('successfully connected!')

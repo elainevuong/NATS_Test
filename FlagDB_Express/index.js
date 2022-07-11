@@ -12,7 +12,8 @@ const offFlag = require('./lib/offFlag')
 const getAllFlags = require('./lib/getAllFlags')
 
 connect({
-  servers: ["ws://127.0.0.1:9090"]
+  servers: ["ws://127.0.0.1:9090"],
+  token: "s3cr3t",
 }).then(connection => {
   console.log('Back End Successfully Connected!')
   natsClient = connection
