@@ -1,8 +1,9 @@
-const { Client } = require('pg');
+import pg from 'pg'
 
-const client = new Client({
+const pgClient = new pg.Client({
   database: 'flag_test'
 })
 
-client.connect()
-module.exports = client
+pgClient.connect()
+
+export default pgClient

@@ -1,24 +1,16 @@
-globalThis.WebSocket = require("websocket").w3cwebsocket;
-const { connect, StringCodec } = require('nats.ws');
-const stringCoder = StringCodec();
-let natsClient
+import { nc, stringCoder, jsm, js } from './client_nats.js'
+import express from "express"
+import pgClient from './clientpg.js' 
 
-const express = require('express')
-const app = express();
-const PORT = 8000;
+jsm.streams.add({ name: `flag_data`, subjects: [`flag.data.1.>`, `flag.data.2.>`] });
 
-const onFlag = require('./lib/onFlag')
-const offFlag = require('./lib/offFlag')
-const getAllFlags = require('./lib/getAllFlags')
-
-connect({
-  servers: ["ws://127.0.0.1:9090"],
-  token: "s3cr3t",
-}).then(connection => {
-  console.log('Back End Successfully Connected!')
-  natsClient = connection
+const streams = await jsm.streams.list().next();
+streams.forEach(stream => {
+  console.log(stream.config.subjects)
 })
 
+const app = express();
+const PORT = 8005;
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
@@ -58,17 +50,57 @@ app.listen(PORT, () => {
 function transformFlagData(flagRows, appId) {
   const flagRowString = JSON.stringify(flagRows)
   const flagRowStringEncoded = stringCoder.encode(flagRowString)
-  natsClient.publish(`flag.data.${appId}.all`, flagRowStringEncoded)
+  const subject = `flag.data.${appId}.all`
+
+  js.publish(subject, flagRowStringEncoded)
 }
 
 function offFlagData(flagRows, appId) {
   const flagRowString = JSON.stringify(flagRows)
   const flagRowStringEncoded = stringCoder.encode(flagRowString)
-  natsClient.publish(`flag.data.${appId}.off`, flagRowStringEncoded)
+  const subject = `flag.data.${appId}.off`
+  js.publish(subject, flagRowStringEncoded)
 }
 
 function onFlagData(flagRows, appId) {
   const flagRowString = JSON.stringify(flagRows)
   const flagRowStringEncoded = stringCoder.encode(flagRowString)
-  natsClient.publish(`flag.data.${appId}.on`, flagRowStringEncoded)
+  const subject = `flag.data.${appId}.on`
+  js.publish(subject, flagRowStringEncoded)
+}
+
+const getAllFlags = async (appId) => {
+  let res = await pgClient.query(`SELECT * FROM flags WHERE app_id = ${appId}`)
+  return res.rows;
+}
+
+const offFlag = async (appId, flagId) => {
+  pgClient.query(
+    `UPDATE flags SET state = false WHERE id = ${flagId} AND app_id = ${appId}`,
+    [],
+    (error, results) => {
+      if (error) {
+        console.log(error)
+      }
+      console.log(`Turned Off Flag with an id of ${flagId} on app ${appId}`)
+      return
+    }
+  )
+}
+
+const onFlag = async (appId, flagId) => {
+  pgClient.query(
+    `UPDATE flags SET state = true WHERE id = ${flagId} AND app_id = ${appId}`,
+    [],
+    (error, results) => {
+      if (error) {
+        console.log(error)
+      } else {
+        console.log(`Turned On Flag with an id of ${flagId} on app ${appId}`)
+        return 
+      }
+
+    }
+  )
+  return 
 }
