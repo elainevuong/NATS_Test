@@ -35,11 +35,6 @@ connect({
 
 
 # Within Server Configuration File
-websocket: {
-  port: 9090,
-  no_tls: true
-}
-
 authorization {
     token: "s3cr3t"
 }

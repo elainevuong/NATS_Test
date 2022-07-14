@@ -1,30 +1,27 @@
-import { nc, stringCoder, jsm, js } from './client_nats.js'
+import { stringCoder, jsm, js } from './clientnats.js'
 import express from "express"
 import pgClient from './clientpg.js' 
 
-jsm.streams.add({ name: `flag_data`, subjects: [`flag.data.1.>`, `flag.data.2.>`] });
+let count = 0
 
-const streams = await jsm.streams.list().next();
-streams.forEach(stream => {
-  console.log(stream.config.subjects)
-})
+jsm.streams.add({ name: `flagdata1`, subjects: [`flag.data.1`] });
+jsm.streams.add({ name: `flagdata2`, subjects: [`flag.data.2`] });
 
 const app = express();
-const PORT = 8005;
+const PORT = 8000;
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 app.get('/getAllFlags/:appId', async (req, res) => {
   const { appId } = req.params
   const flagRows = await getAllFlags(appId)
+  
   transformFlagData(flagRows, appId)
   res.json(flagRows)
 })
 
 app.post('/offFlag/:appId/:flagId', async (req, res) => {
   const { appId, flagId } = req.params
-  console.log(appId)
-  console.log(flagId)
   await offFlag(appId, flagId)
 
   const flagRows = await getAllFlags(appId)
@@ -48,29 +45,35 @@ app.listen(PORT, () => {
 })
 
 function transformFlagData(flagRows, appId) {
+  console.log(flagRows)
   const flagRowString = JSON.stringify(flagRows)
   const flagRowStringEncoded = stringCoder.encode(flagRowString)
-  const subject = `flag.data.${appId}.all`
-
+  const subject = `flag.data.${appId}`
   js.publish(subject, flagRowStringEncoded)
 }
 
 function offFlagData(flagRows, appId) {
+  console.log(flagRows)
   const flagRowString = JSON.stringify(flagRows)
   const flagRowStringEncoded = stringCoder.encode(flagRowString)
-  const subject = `flag.data.${appId}.off`
+  const subject = `flag.data.${appId}`
   js.publish(subject, flagRowStringEncoded)
 }
 
 function onFlagData(flagRows, appId) {
+  console.log(flagRows)
   const flagRowString = JSON.stringify(flagRows)
   const flagRowStringEncoded = stringCoder.encode(flagRowString)
-  const subject = `flag.data.${appId}.on`
+  const subject = `flag.data.${appId}`
   js.publish(subject, flagRowStringEncoded)
 }
 
 const getAllFlags = async (appId) => {
   let res = await pgClient.query(`SELECT * FROM flags WHERE app_id = ${appId}`)
+
+  count++
+  res.rows.unshift(`Message Number: ${count}`)
+
   return res.rows;
 }
 
